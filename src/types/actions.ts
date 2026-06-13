@@ -1,7 +1,6 @@
 export enum WalletActions {
     GENERATE_WALLET = "generate_wallet",
     SHOW_PUB_KEY = "show_pub_key",
-    EXPORT_PRIVATE_KEY = "export_private_key",
     CHECK_BALANCE = "check_balance",
 }
 

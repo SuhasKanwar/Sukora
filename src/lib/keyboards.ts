@@ -7,7 +7,6 @@ export const primaryKeyboard = Markup.inlineKeyboard([
   [btn('Generate Wallet', WalletActions.GENERATE_WALLET)],
   [
     btn('Show Public Key', WalletActions.SHOW_PUB_KEY),
-    btn('Export Private Key', WalletActions.EXPORT_PRIVATE_KEY),
   ],
   [
     btn('Check Balance', WalletActions.CHECK_BALANCE),
