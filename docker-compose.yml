@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sukora_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: sukora
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: sukora_app
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to point to the postgres container instead of localhost
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/sukora?schema=public
+    command: sh -c "bunx --bun prisma generate && bunx --bun prisma db push && bun start"
+
+volumes:
+  postgres_data:
