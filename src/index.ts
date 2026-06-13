@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { TELEGRAM_BOT_TOKEN } from './lib/conifg';
 import { message } from 'telegraf/filters';
 import { BotActions, TransactionActions, WalletActions } from './types/actions';
-import { botBackToMainHandler, botStartHandler, botTextMessageHandler } from './handlers/query';
+import { botBackToMainHandler, botStartHandler, botTextMessageHandler, botMenuHandler } from './handlers/query';
 import { generateWalletHandler, showPublicKeyHandler, checkBalanceHandler } from './handlers/wallet';
 import { sendSolHandler } from './handlers/transactions';
 
@@ -42,6 +42,7 @@ bot.use(async (ctx, next) => {
 });
 
 bot.start(async (ctx) => botStartHandler(ctx));
+bot.command('menu', async (ctx) => botMenuHandler(ctx));
 
 bot.action(BotActions.BACK_TO_MAIN, async (ctx) => botBackToMainHandler(ctx));
 

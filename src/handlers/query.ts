@@ -3,9 +3,7 @@ import { primaryKeyboard } from "../lib/keyboards";
 import { store } from "../store/MemoryStore";
 import { TransactionActions } from "../types/actions";
 import { prisma } from "../lib/prisma";
-import { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { isValidSolanaAddress, isValidAmount } from "../utils/validators";
-import { SOLANA_RPC_URL } from "../lib/conifg";
+import { sendSolHelper } from "./transactions";
 
 const WELCOME_MESSAGE = (name: string | undefined): string => `Welcome ${name || "User"}! I am Sukora. I can help you manage your Solana wallet, check your balance, and send SOL or tokens. Please use the buttons below to navigate through the options.`;
 
@@ -36,126 +34,35 @@ export function botBackToMainHandler(ctx: Context) {
     });
 }
 
+export function botMenuHandler(ctx: Context) {
+    const userId = ctx.from?.id;
+    if (!userId) return;
+
+    return ctx.reply("Here is the main menu:", {
+        parse_mode: 'Markdown',
+        ...primaryKeyboard
+    });
+}
+
 export async function botTextMessageHandler(ctx: Context) {
     const userId = ctx.from?.id;
     if (!userId) return;
-    if (store.getPendingRequest(userId)?.type === TransactionActions.SEND_SOL) {
-        const msg = ctx.message;
-        if (!msg) return;
 
-        if ("text" in msg && typeof msg.text === 'string') {
-            const text = msg.text.trim();
-            const pendingReq = store.getPendingRequest(userId);
+    const msg = ctx.message;
+    if (!msg || !("text" in msg) || typeof msg.text !== 'string') {
+        ctx.sendMessage("Please send a valid text message.");
+        return;
+    }
 
-            if (pendingReq && !pendingReq.to) {
-                if (!isValidSolanaAddress(text)) {
-                    ctx.sendMessage("Invalid Solana address. Please provide a valid address:");
-                    return;
-                }
-                const toPubKey = text;
-                store.updatePendingRequestTo(userId, toPubKey);
-                ctx.sendMessage("How much SOL do you want to send?");
-            } else {
-                if (!isValidAmount(text)) {
-                    ctx.sendMessage("Invalid amount. Please provide a valid number:");
-                    return;
-                }
+    const text = msg.text.trim();
+    const pendingRequest = store.getPendingRequest(userId);
 
-                const amount = Number(text);
-                const userKeypair = store.getUser(userId);
-
-                if (!userKeypair) {
-                    ctx.sendMessage("You don't have a wallet to send from.");
-                    store.deletePendingRequest(userId);
-                    return;
-                }
-
-                const toAddress = pendingReq?.to || '';
-                ctx.sendMessage(`Initiating transaction of ${amount} SOL to ${toAddress}...`);
-
-                let txRecord;
-                try {
-                    txRecord = await prisma.transaction.create({
-                        data: {
-                            user: { connect: { telegramId: userId.toString() } },
-                            type: 'SEND_SOL',
-                            amount: BigInt(amount * LAMPORTS_PER_SOL),
-                            fromAddress: userKeypair.publicKey.toBase58(),
-                            toAddress: toAddress,
-                            status: 'PENDING'
-                        }
-                    });
-
-                    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-
-                    const balance = await connection.getBalance(userKeypair.publicKey);
-                    const transferAmountLamports = amount * LAMPORTS_PER_SOL;
-                    if (balance < transferAmountLamports + 5000) {
-                        ctx.sendMessage(`Insufficient funds. Your current balance is ${balance / LAMPORTS_PER_SOL} SOL, which cannot cover the amount + network fees.`);
-                        store.deletePendingRequest(userId);
-
-                        if (txRecord) {
-                            await prisma.transaction.update({
-                                where: { id: txRecord.id },
-                                data: { status: 'FAILED' }
-                            });
-                        }
-                        return;
-                    }
-
-                    const transaction = new Transaction().add(
-                        SystemProgram.transfer({
-                            fromPubkey: userKeypair.publicKey,
-                            toPubkey: new PublicKey(toAddress),
-                            lamports: amount * LAMPORTS_PER_SOL
-                        })
-                    );
-
-                    const signature = await connection.sendTransaction(transaction, [userKeypair]);
-
-                    let confirmed = false;
-                    for (let i = 0; i < 30; i++) {
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        const statusResponse = await connection.getSignatureStatus(signature);
-                        const status = statusResponse.value;
-                        if (status && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized')) {
-                            if (status.err) {
-                                throw new Error(`Transaction execution failed: ${JSON.stringify(status.err)}`);
-                            }
-                            confirmed = true;
-                            break;
-                        }
-                    }
-
-                    if (!confirmed) {
-                        throw new Error("Transaction confirmation timed out. It may still be processed.");
-                    }
-
-                    await prisma.transaction.update({
-                        where: { id: txRecord.id },
-                        data: {
-                            status: 'CONFIRMED',
-                            txHash: signature,
-                            confirmedAt: new Date()
-                        }
-                    });
-
-                    ctx.sendMessage(`Transaction successful! \nSignature: ${signature}`);
-                } catch (err) {
-                    console.error("Transaction failed:", err);
-                    if (txRecord) {
-                        await prisma.transaction.update({
-                            where: { id: txRecord.id },
-                            data: { status: 'FAILED' }
-                        });
-                    }
-                    ctx.sendMessage("Transaction failed. Please try again.");
-                } finally {
-                    store.deletePendingRequest(userId);
-                }
-            }
-        } else {
-            ctx.sendMessage("Please send a text message with the required information.");
-        }
+    if (pendingRequest?.type === TransactionActions.SEND_SOL) {
+        await sendSolHelper(ctx, userId, text);
+    } else {
+        ctx.sendMessage("I didn't understand that. Please use the menu to select an action.", {
+            parse_mode: 'Markdown',
+            ...primaryKeyboard
+        });
     }
 }
