@@ -4,7 +4,7 @@ import { TELEGRAM_BOT_TOKEN } from './lib/conifg';
 import { message } from 'telegraf/filters';
 import { BotActions, TransactionActions, WalletActions } from './types/actions';
 import { botBackToMainHandler, botStartHandler, botTextMessageHandler } from './handlers/query';
-import { generateWalletHandler, showPublicKeyHandler } from './handlers/wallet';
+import { generateWalletHandler, showPublicKeyHandler, checkBalanceHandler } from './handlers/wallet';
 import { sendSolHandler } from './handlers/transactions';
 
 import { prisma } from './lib/prisma';
@@ -16,12 +16,38 @@ dotenv.config();
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 
+bot.use(async (ctx, next) => {
+    const userId = ctx.from?.id;
+    if (!userId) return next();
+
+    if (ctx.message && 'text' in ctx.message && ctx.message.text.startsWith('/start')) {
+        return next();
+    }
+
+    try {
+        const dbUser = await prisma.user.findUnique({
+            where: { telegramId: userId.toString() }
+        });
+
+        if (!dbUser) {
+            await ctx.reply("Please execute /start command to login to the bot first.");
+            return;
+        }
+    } catch (err) {
+        console.error("Error checking user existence:", err);
+        return;
+    }
+
+    return next();
+});
+
 bot.start(async (ctx) => botStartHandler(ctx));
 
 bot.action(BotActions.BACK_TO_MAIN, async (ctx) => botBackToMainHandler(ctx));
 
 bot.action(WalletActions.GENERATE_WALLET, async (ctx) => generateWalletHandler(ctx));
 bot.action(WalletActions.SHOW_PUB_KEY, async (ctx) => showPublicKeyHandler(ctx));
+bot.action(WalletActions.CHECK_BALANCE, async (ctx) => checkBalanceHandler(ctx));
 
 bot.action(TransactionActions.SEND_SOL, (ctx) => sendSolHandler(ctx));
 

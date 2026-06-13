@@ -111,7 +111,25 @@ export async function botTextMessageHandler(ctx: Context) {
                         })
                     );
 
-                    const signature = await sendAndConfirmTransaction(connection, transaction, [userKeypair]);
+                    const signature = await connection.sendTransaction(transaction, [userKeypair]);
+
+                    let confirmed = false;
+                    for (let i = 0; i < 30; i++) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        const statusResponse = await connection.getSignatureStatus(signature);
+                        const status = statusResponse.value;
+                        if (status && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized')) {
+                            if (status.err) {
+                                throw new Error(`Transaction execution failed: ${JSON.stringify(status.err)}`);
+                            }
+                            confirmed = true;
+                            break;
+                        }
+                    }
+
+                    if (!confirmed) {
+                        throw new Error("Transaction confirmation timed out. It may still be processed.");
+                    }
 
                     await prisma.transaction.update({
                         where: { id: txRecord.id },
