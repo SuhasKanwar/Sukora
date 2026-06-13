@@ -2,7 +2,6 @@ import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
 import { TELEGRAM_BOT_TOKEN } from './lib/conifg';
 import { message } from 'telegraf/filters';
-import type { Users, PendingRequestsType } from './types/inMemory';
 import { BotActions, TransactionActions, WalletActions } from './types/actions';
 import { botBackToMainHandler, botStartHandler, botTextMessageHandler } from './handlers/query';
 import { generateWalletHandler, showPublicKeyHandler } from './handlers/wallet';
@@ -11,9 +10,6 @@ import { sendSolHandler } from './handlers/transactions';
 dotenv.config();
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
-
-export const USERS: Users = {};
-export const PENDING_REQUESTS: PendingRequestsType = {}; 
 
 bot.start(async (ctx) => botStartHandler(ctx));
 

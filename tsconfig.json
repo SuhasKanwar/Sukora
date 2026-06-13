@@ -21,7 +21,7 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "esModuleInterop": true,
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
 
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
