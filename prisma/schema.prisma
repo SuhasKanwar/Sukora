@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum TransactionType {
+  SEND_SOL
+  SEND_TOKEN
+}
+
+model User {
+  id          String    @id @default(uuid())
+  telegramId  String    @unique
+  firstName        String?
+  lastName         String?
+  createdAt   DateTime  @default(now())
+
+  wallets     Wallet[]
+  transactions Transaction[]
+}
+
+model Wallet {
+  id                  String   @id @default(uuid())
+  user                User     @relation(fields: [userId], references: [id])
+  userId              String
+  publicKey           String   @unique
+  encryptedSecretKey  String?
+  balance             BigInt   @default(0) @db.BigInt
+  createdAt           DateTime @default(now())
+
+  transactions        Transaction[]
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  user          User?             @relation(fields: [userId], references: [id])
+  userId        String?
+  wallet        Wallet?           @relation(fields: [walletId], references: [id])
+  walletId      String?
+  txHash        String?           @unique
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  amount        BigInt            @db.BigInt
+  fromAddress   String
+  toAddress     String
+  meta          Json?
+  createdAt     DateTime          @default(now())
+  confirmedAt   DateTime?
+}
