@@ -33,6 +33,13 @@ class MemoryStore {
         }
     }
 
+    public updatePendingRequestMint(userId: string | number, mint: string): void {
+        const req = this.pendingRequests[userId.toString()];
+        if (req) {
+            req.mint = mint;
+        }
+    }
+
     public deletePendingRequest(userId: string | number): void {
         delete this.pendingRequests[userId.toString()];
     }

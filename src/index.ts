@@ -5,7 +5,7 @@ import { message } from 'telegraf/filters';
 import { BotActions, TransactionActions, WalletActions } from './types/actions';
 import { botBackToMainHandler, botStartHandler, botTextMessageHandler, botMenuHandler } from './handlers/query';
 import { generateWalletHandler, showPublicKeyHandler, checkBalanceHandler } from './handlers/wallet';
-import { sendSolHandler } from './handlers/transactions';
+import { sendSolHandler, sendTokenHandler, transactionHistoryHandler } from './handlers/transactions';
 
 import { prisma } from './lib/prisma';
 import { Keypair } from '@solana/web3.js';
@@ -51,6 +51,8 @@ bot.action(WalletActions.SHOW_PUB_KEY, async (ctx) => showPublicKeyHandler(ctx))
 bot.action(WalletActions.CHECK_BALANCE, async (ctx) => checkBalanceHandler(ctx));
 
 bot.action(TransactionActions.SEND_SOL, (ctx) => sendSolHandler(ctx));
+bot.action(TransactionActions.SEND_TOKEN, (ctx) => sendTokenHandler(ctx));
+bot.action(new RegExp('^' + TransactionActions.TX_HISTORY + '(?:_(\\d+))?$'), (ctx) => transactionHistoryHandler(ctx));
 
 bot.on(message("text"), async (ctx) => botTextMessageHandler(ctx));
 

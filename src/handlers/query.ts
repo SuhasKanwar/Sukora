@@ -3,7 +3,7 @@ import { primaryKeyboard } from "../lib/keyboards";
 import { store } from "../store/MemoryStore";
 import { TransactionActions } from "../types/actions";
 import { prisma } from "../lib/prisma";
-import { sendSolHelper } from "./transactions";
+import { sendSolHelper, sendTokenHelper } from "./transactions";
 
 const WELCOME_MESSAGE = (name: string | undefined): string => `Welcome ${name || "User"}! I am Sukora. I can help you manage your Solana wallet, check your balance, and send SOL or tokens. Please use the buttons below to navigate through the options.`;
 
@@ -59,6 +59,8 @@ export async function botTextMessageHandler(ctx: Context) {
 
     if (pendingRequest?.type === TransactionActions.SEND_SOL) {
         await sendSolHelper(ctx, userId, text);
+    } else if (pendingRequest?.type === TransactionActions.SEND_TOKEN) {
+        await sendTokenHelper(ctx, userId, text);
     } else {
         ctx.sendMessage("I didn't understand that. Please use the menu to select an action.", {
             parse_mode: 'Markdown',

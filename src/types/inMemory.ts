@@ -7,6 +7,7 @@ export type PendingRequestEntry = {
     type: TransactionActions.SEND_SOL | TransactionActions.SEND_TOKEN;
     amount?: number;
     to?: string;
+    mint?: string;
 };
 
 export type PendingRequestsType = Record<string, PendingRequestEntry | undefined>;
