@@ -2,17 +2,48 @@ import { Keypair } from "@solana/web3.js";
 import type { Context } from "telegraf";
 import { store } from "../store/MemoryStore";
 import { generateWalletKeyboard, primaryKeyboard } from "../lib/keyboards";
+import { prisma } from "../lib/prisma";
+import { encrypt } from "../lib/encryption";
 
-export function generateWalletHandler(ctx: Context) {
+export async function generateWalletHandler(ctx: Context) {
     ctx.answerCbQuery("Generating new Wallet...");
     const userId = ctx.from?.id;
     if(!userId) return;
+    
+    const existingWallet = await prisma.wallet.findFirst({
+        where: { user: { telegramId: userId.toString() } }
+    });
+
+    if (existingWallet) {
+        ctx.sendMessage("You already have a wallet linked to your account.", {
+            parse_mode: 'Markdown',
+            ...primaryKeyboard
+        });
+        return;
+    }
+
     const keypair = Keypair.generate();
-    store.setUser(userId, keypair);
-    ctx.sendMessage(`New wallet created for you with the public key: ${keypair.publicKey.toBase58()}`, {
-        parse_mode: 'Markdown',
-        ...primaryKeyboard
-    })
+    
+    try {
+        await prisma.wallet.create({
+            data: {
+                user: { connect: { telegramId: userId.toString() } },
+                publicKey: keypair.publicKey.toBase58(),
+                encryptedSecretKey: encrypt(Buffer.from(keypair.secretKey).toString('hex'))
+            }
+        });
+        store.setUser(userId, keypair);
+        ctx.sendMessage(`New wallet created for you with the public key: ${keypair.publicKey.toBase58()}`, {
+            parse_mode: 'Markdown',
+            ...primaryKeyboard
+        });
+    } catch (err) {
+        console.error("Failed to save wallet to DB", err);
+        ctx.sendMessage("Failed to generate wallet. Please try again.", {
+            parse_mode: 'Markdown',
+            ...primaryKeyboard
+        });
+    }
 }
 
 export function showPublicKeyHandler(ctx: Context) {
